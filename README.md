@@ -207,7 +207,7 @@ uses the subset of rows where they are present.
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/<your-username>/melbourne-housing-analysis.git
+   git clone https://github.com/<Farzan_lab>/melbourne-housing-analysis.git
    ```
 2. Download `Melbourne_housing_FULL.csv` from Kaggle and place it in `data/raw/`.
 3. Open the project in RStudio and run the scripts in `R/` in numbered order.
