@@ -13,6 +13,38 @@ library(tidyverse)
 ```
 
 ```{r}
-data_path = ""
+data_path = "C:/Users/farza/Job/Github/Melbourne-Housing-Market/data/raw/Melbourne_housing_FULL.csv"
+df = read.csv(data_path)
 ```
 
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
