@@ -1,0 +1,31 @@
+# ---- Data ----
+# Do NOT commit raw data. It should be downloaded from the source (Kaggle).
+data/raw/*
+!data/raw/.gitkeep
+
+# Processed data can get large; keep the folder but ignore heavy files.
+# Comment the next line out if you DO want to commit the cleaned dataset.
+data/processed/*
+!data/processed/.gitkeep
+
+# ---- R ----
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# ---- Power BI ----
+# .pbix files are large and binary. Uncomment to ignore them if needed.
+# powerbi/*.pbix
+
+# ---- Outputs (optional) ----
+# Uncomment if you prefer not to track generated figures/tables.
+# outputs/figures/*
+# outputs/tables/*
+
+# ---- OS / Editor junk ----
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
