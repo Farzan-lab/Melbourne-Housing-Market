@@ -81,22 +81,42 @@ range(month(df$date), na.rm = TRUE)    # should be 1 to 12
 # not be imputed (see README, "Data Cleaning Decisions"). We drop them.
 
 # Count rows before, so we can see how many we remove.
-rows_before <- nrow(housing)
+rows_before <- nrow(df)
 
-housing <- housing |>
+df <- df |>
   filter(!is.na(price))
 
 # Count rows after.
-rows_after <- nrow(housing)
+rows_after <- nrow(df)
 
 # ---- Check the result -------------------------------------------------------
 rows_before                    # rows before dropping
 rows_after                     # rows after dropping
 rows_before - rows_after       # how many rows were removed
-sum(is.na(housing$price))      # should now be 0
+sum(is.na(df$price))      # should now be 0
 ```
 ```{r}
+# ---- Step 4: Fix invalid year_built values ----------------------------------
+# Two values are impossible: 1196 (way before Melbourne existed) and 2106
+# (in the future). We treat any year before 1840 or after 2019 as invalid and
+# set it to NA. We use NA rather than guessing, because we do not know the true
+# year — inventing one would be fabricating data.
 
+# Count how many values we are about to flag, so the change is visible.
+invalid_years <- df |>
+  filter(year_built < 1840 | year_built > 2019) |>
+  nrow()
+
+df <- df |>
+  mutate(year_built = if_else( 
+    year_built < 1840 | year_built > 2018,   # condition: is it invalid?
+    NA_real_,                                 # if TRUE  -> set to NA
+    year_built                                # if FALSE -> keep as-is
+  ))
+
+# ---- Check the result -------------------------------------------------------
+invalid_years                                 # how many values we flagged
+range(df$year_built, na.rm = TRUE)       # should now be sensible
 ```
 
 ```{r}
