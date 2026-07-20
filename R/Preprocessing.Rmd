@@ -54,6 +54,56 @@ names(df)   # see the cleaned column names
 ```
 
 ```{r}
+# ---- Step 2: Convert the date column to a real date type --------------------
+
+# First, count missing dates BEFORE conversion.
+na_before <- sum(is.na(df$date))
+
+# Convert text (day/month/year) to a real Date.
+housing <- df |>
+  mutate(date = dmy(date))
+
+# Count missing dates AFTER conversion.
+na_after <- sum(is.na(df$date))
+
+# ---- Verify the conversion was clean ----------------------------------------
+na_before                                   # missing before
+na_after                                    # missing after (should be equal)
+range(df$date, na.rm = TRUE)           # sensible date range?
+range(month(df$date), na.rm = TRUE)    # should be 1 to 12
+
+```
+
+
+```{r}
+# ---- Step 3: Remove rows with a missing price -------------------------------
+# price is our target variable, so rows without it cannot be used and should
+# not be imputed (see README, "Data Cleaning Decisions"). We drop them.
+
+# Count rows before, so we can see how many we remove.
+rows_before <- nrow(housing)
+
+housing <- housing |>
+  filter(!is.na(price))
+
+# Count rows after.
+rows_after <- nrow(housing)
+
+# ---- Check the result -------------------------------------------------------
+rows_before                    # rows before dropping
+rows_after                     # rows after dropping
+rows_before - rows_after       # how many rows were removed
+sum(is.na(housing$price))      # should now be 0
+```
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
 
 ```
 
