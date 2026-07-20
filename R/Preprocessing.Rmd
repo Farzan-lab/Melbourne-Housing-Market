@@ -1,180 +1,232 @@
 ---
-title: "prepocessing"
-output: html_document
-date: "2026-07-19"
+title: "Melbourne Housing Market — Data Cleaning & Analysis"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: flatly
+    code_folding: show
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# This chunk sets global options for the whole document.
+# include=FALSE means the chunk runs but is NOT shown in the output.
+# echo=TRUE    -> show the code in the report
+# warning/message=FALSE -> hide package startup noise for a cleaner report
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 5
+)
 ```
 
----
-# ---- Load packages ----------------------------------------------------------
----
-```{r}
+# Introduction
+
+This report documents the end-to-end analysis of the Melbourne residential
+real estate market (January 2016 – March 2018). The goal is to help ordinary
+residents and businesses understand how the market changes over time and across
+suburbs, property types, and price ranges.
+
+The workflow has three parts:
+
+1. **Load** the raw data and inspect it.
+2. **Clean** and pre-process the data.
+3. **Explore** the data to find patterns (foundation for the Power BI dashboard).
+
+The dataset comes from
+[Kaggle](https://www.kaggle.com/datasets/anthonypino/melbourne-housing-market),
+scraped from weekly results published on Domain.com.au.
+
+# Setup
+
+We use the **tidyverse** for data manipulation and plotting, **janitor** for
+tidy column names, and **skimr** for rich summaries.
+
+```{r packages}
 library(tidyverse)
-library(janitor)     # tidy up messy column names
+library(janitor)
+library(skimr)
 ```
 
+# Load the Raw Data
 
-```{r}
-# ---- Load Dataset ----------------------------------------------------------
-data_path = "C:/Users/farza/Job/Github/Melbourne-Housing-Market/data/raw/Melbourne_housing_FULL.csv"
-df = read.csv(data_path)
+```{r load-data}
+# read_csv() reads the raw file into a tibble (a tidy data frame).
+housing_raw <- read_csv("C:/Users/farza/Job/Github/Melbourne-Housing-Market/data/raw/Melbourne_housing_FULL.csv")
 ```
 
-```{r}
-# ---- summary of dataset
-summary(df)
+> **Note on the path:** this `.Rmd` lives in the `R/` folder, so we use
+> `../data/raw/...` — the `../` means "go up one folder" to reach the project
+> root, then down into `data/raw`.
+
+A first look at the structure:
+
+```{r first-look}
+glimpse(housing_raw)
 ```
 
-```{r}
-# ---- Analysing null values
-colSums(is.na(df))
+The data has `r nrow(housing_raw)` rows and `r ncol(housing_raw)` columns.
+
+# Data Understanding
+
+Before changing anything, we inspect the data to find issues to fix.
+
+```{r understand-missing}
+# Count missing values per column, as a percentage, sorted high to low.
+housing_raw |>
+  summarise(across(everything(), ~ mean(is.na(.)) * 100)) |>
+  pivot_longer(everything(), names_to = "column", values_to = "missing_pct") |>
+  arrange(desc(missing_pct))
 ```
 
-```{r}
-# ---- Step 1: Standardise column names ---------------------------------------
-# clean_names() converts every column name to lower_snake_case and removes
-# spaces / capitals. It does NOT fix spelling, so we rename the misspelled
-# and awkward columns ourselves with rename() -> new_name = old_name.
-df <- df |>
+Key issues found:
+
+- **`Price`** (our target) is ~22% missing.
+- **`BuildingArea`** (~61%) and **`YearBuilt`** (~55%) are more than half empty.
+- **`YearBuilt`** contains impossible values (e.g. 1196 and 2106).
+- **`Landsize`** has many zeros and extreme outliers.
+- Two columns are misspelled at source: `Lattitude`, `Longtitude`.
+
+# Data Cleaning
+
+The cleaning pipeline runs in order. **Order matters** — for example, the date
+must be parsed before we can extract the year and month from it.
+
+## Step 1 — Standardise column names
+
+```{r clean-names}
+# clean_names() -> lower_snake_case; then we fix source misspellings by hand.
+df <- housing_raw |>
   clean_names() |>
   rename(
-    latitude       = lattitude,     # fix source misspelling
-    longitude      = longtitude,    # fix source misspelling
-    region_name    = regionname,    # add the missing underscore
+    latitude       = lattitude,
+    longitude      = longtitude,
+    region_name    = regionname,
     property_count = propertycount
   )
+
+names(df)
 ```
 
-```{r}
-# ---- Check the result -------------------------------------------------------
-names(df)   # see the cleaned column names
-```
+## Step 2 — Parse the date column
 
-```{r}
-# ---- Step 2: Convert the date column to a real date type --------------------
+The raw date is text in day/month/year format (e.g. `28/01/2016`). We convert
+it to a real date with `dmy()` and **verify** the conversion by comparing the
+count of missing dates before and after (equal counts = every value parsed).
 
-# First, count missing dates BEFORE conversion.
+```{r parse-date}
 na_before <- sum(is.na(df$date))
-
-# Convert text (day/month/year) to a real Date.
-housing <- df |>
-  mutate(date = dmy(date))
-
-# Count missing dates AFTER conversion.
+df <- df |> mutate(date = dmy(date))
 na_after <- sum(is.na(df$date))
 
-# ---- Verify the conversion was clean ----------------------------------------
-na_before                                   # missing before
-na_after                                    # missing after (should be equal)
-range(df$date, na.rm = TRUE)           # sensible date range?
-range(month(df$date), na.rm = TRUE)    # should be 1 to 12
-
+c(na_before = na_before, na_after = na_after)   # should be equal
+class(df$date)                                  # "Date"
 ```
 
+## Step 3 — Drop rows with a missing price
 
-```{r}
-# ---- Step 3: Remove rows with a missing price -------------------------------
-# price is our target variable, so rows without it cannot be used and should
-# not be imputed (see README, "Data Cleaning Decisions"). We drop them.
+`price` is the target, so rows without it are removed (not imputed).
 
-# Count rows before, so we can see how many we remove.
+```{r drop-price}
 rows_before <- nrow(df)
-
-df <- df |>
-  filter(!is.na(price))
-
-# Count rows after.
+df <- df |> filter(!is.na(price))
 rows_after <- nrow(df)
 
-# ---- Check the result -------------------------------------------------------
-rows_before                    # rows before dropping
-rows_after                     # rows after dropping
-rows_before - rows_after       # how many rows were removed
-sum(is.na(df$price))      # should now be 0
+c(before = rows_before, after = rows_after, removed = rows_before - rows_after)
 ```
-```{r}
-# ---- Step 4: Fix invalid year_built values ----------------------------------
-# Two values are impossible: 1196 (way before Melbourne existed) and 2106
-# (in the future). We treat any year before 1840 or after 2019 as invalid and
-# set it to NA. We use NA rather than guessing, because we do not know the true
-# year — inventing one would be fabricating data.
 
-# Count how many values we are about to flag, so the change is visible.
-invalid_years <- df |>
-  filter(year_built < 1850 | year_built > 2019) |>
-  nrow()
+## Step 4 — Fix invalid `year_built` values
 
+Melbourne was founded ~1835, so any year before 1840 (or after 2019) is a
+data-entry error. We set these to `NA` rather than guessing.
+
+```{r fix-year}
 df <- df |>
-  mutate(year_built = if_else( 
-    year_built < 1850 | year_built > 2019,   # condition: is it invalid?
-    NA_real_,                                 # if TRUE  -> set to NA
-    year_built                                # if FALSE -> keep as-is
+  mutate(year_built = if_else(
+    year_built < 1840 | year_built > 2019,
+    NA_real_,
+    year_built
   ))
 
-# ---- Check the result -------------------------------------------------------
-invalid_years                                 # how many values we flagged
-range(df$year_built, na.rm = TRUE)       # should now be sensible
+range(df$year_built, na.rm = TRUE)   # sensible range now
 ```
 
-```{r}
-# ---- Step 5: Handle zero values in landsize and building_area ---------------
+## Step 5 — Handle zeros in `landsize` and `building_area`
 
-# 5a. building_area: a building cannot have zero area, so 0 means "unknown".
-#     Convert 0 -> NA.
+A building cannot have zero area (→ `NA`). A zero land size means "not
+recorded" for a house/townhouse (→ `NA`), but is expected for a unit (→ keep).
+
+```{r fix-zeros}
 df <- df |>
-  mutate(building_area = if_else(building_area == 0, NA_real_, building_area))
+  mutate(
+    building_area = if_else(building_area == 0, NA_real_, building_area),
+    landsize      = if_else(
+      landsize == 0 & type %in% c("h", "t"),
+      NA_real_,
+      landsize
+    )
+  )
 
-# 5b. landsize: a zero means different things depending on property type.
-#     - For units (type "u"), 0 land is expected (you don't own land) -> keep.
-#     - For houses ("h") and townhouses ("t"), 0 almost certainly means the
-#       land size was not recorded -> convert to NA.
+c(zero_building = sum(df$building_area == 0, na.rm = TRUE),
+  zero_landsize = sum(df$landsize == 0, na.rm = TRUE))
+```
+
+## Step 6 — Create helper columns for time analysis
+
+```{r helper-cols}
 df <- df |>
-  mutate(landsize = if_else(
-    landsize == 0 & type %in% c("h", "t"),   # zero AND a house/townhouse
-    NA_real_,                                 # -> unknown
-    landsize                                  # otherwise keep as-is
-  ))
+  mutate(
+    sale_year  = year(date),
+    sale_month = month(date)
+  )
 
-# ---- Check the result -------------------------------------------------------
-sum(df$building_area == 0, na.rm = TRUE)   # should be 0
-sum(df$landsize == 0, na.rm = TRUE)        # only the unit zeros remain (~1632)
+df |> select(date, sale_year, sale_month) |> head()
 ```
 
-```{r}
-# ---- Step 5: Handle zero values in landsize and building_area ---------------
+## Save the cleaned data
 
-# 5a. building_area: a building cannot have zero area, so 0 means "unknown".
-#     Convert 0 -> NA.
-df <- df |>
-  mutate(building_area = if_else(building_area == 0, NA_real_, building_area))
-
-# 5b. landsize: a zero means different things depending on property type.
-#     - For units (type "u"), 0 land is expected (you don't own land) -> keep.
-#     - For houses ("h") and townhouses ("t"), 0 almost certainly means the
-#       land size was not recorded -> convert to NA.
-df <- df |>
-  mutate(landsize = if_else(
-    landsize == 0 & type %in% c("h", "t"),   # zero AND a house/townhouse
-    NA_real_,                                 # -> unknown
-    landsize                                  # otherwise keep as-is
-  ))
-
-# ---- Check the result -------------------------------------------------------
-sum(df$building_area == 0, na.rm = TRUE)   # should be 0
-sum(df$landsize == 0, na.rm = TRUE)        # only the unit zeros remain (~1632)
+```{r save-clean}
+write_csv(df, "C:/Users/farza/Job/Github/Melbourne-Housing-Market/data/processed/melbourne_housing_clean.csv")
 ```
 
-```{r}
+The cleaned dataset has `r nrow(df)` rows ready for analysis.
 
+# Exploratory Data Analysis
+
+> This section will be filled in during Phase 3. Below are placeholders for the
+> questions we plan to explore.
+
+## Price distribution
+
+```{r eda-price-dist, eval=FALSE}
+# eval=FALSE means this chunk is shown but NOT run yet (a placeholder).
+options(scipen = 999)
+ggplot(df, aes(x = price)) +
+  geom_histogram(bins = 50) +
+  labs(title = "Distribution of sale prices", x = "Price (AUD)", y = "Count")
 ```
 
-```{r}
+## Price trend over time
 
+```{r eda-trend, eval=FALSE}
+# Average price per month — to be developed in Phase 3.
 ```
 
-```{r}
+## Most expensive suburbs
 
+```{r eda-suburbs, eval=FALSE}
+# Top suburbs by median price — to be developed in Phase 3.
 ```
+
+# Summary
+
+- The raw data was cleaned: names standardised, dates parsed, missing prices
+  removed, invalid years and zero areas handled, helper columns added.
+- The cleaned dataset is saved to `data/processed/` and is ready for the
+  exploratory analysis and the Power BI dashboard.
