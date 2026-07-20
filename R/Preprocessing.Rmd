@@ -104,12 +104,12 @@ sum(is.na(df$price))      # should now be 0
 
 # Count how many values we are about to flag, so the change is visible.
 invalid_years <- df |>
-  filter(year_built < 1840 | year_built > 2019) |>
+  filter(year_built < 1850 | year_built > 2019) |>
   nrow()
 
 df <- df |>
   mutate(year_built = if_else( 
-    year_built < 1800 | year_built > 2019,   # condition: is it invalid?
+    year_built < 1850 | year_built > 2019,   # condition: is it invalid?
     NA_real_,                                 # if TRUE  -> set to NA
     year_built                                # if FALSE -> keep as-is
   ))
@@ -120,11 +120,51 @@ range(df$year_built, na.rm = TRUE)       # should now be sensible
 ```
 
 ```{r}
+# ---- Step 5: Handle zero values in landsize and building_area ---------------
 
+# 5a. building_area: a building cannot have zero area, so 0 means "unknown".
+#     Convert 0 -> NA.
+df <- df |>
+  mutate(building_area = if_else(building_area == 0, NA_real_, building_area))
+
+# 5b. landsize: a zero means different things depending on property type.
+#     - For units (type "u"), 0 land is expected (you don't own land) -> keep.
+#     - For houses ("h") and townhouses ("t"), 0 almost certainly means the
+#       land size was not recorded -> convert to NA.
+df <- df |>
+  mutate(landsize = if_else(
+    landsize == 0 & type %in% c("h", "t"),   # zero AND a house/townhouse
+    NA_real_,                                 # -> unknown
+    landsize                                  # otherwise keep as-is
+  ))
+
+# ---- Check the result -------------------------------------------------------
+sum(df$building_area == 0, na.rm = TRUE)   # should be 0
+sum(df$landsize == 0, na.rm = TRUE)        # only the unit zeros remain (~1632)
 ```
 
 ```{r}
+# ---- Step 5: Handle zero values in landsize and building_area ---------------
 
+# 5a. building_area: a building cannot have zero area, so 0 means "unknown".
+#     Convert 0 -> NA.
+df <- df |>
+  mutate(building_area = if_else(building_area == 0, NA_real_, building_area))
+
+# 5b. landsize: a zero means different things depending on property type.
+#     - For units (type "u"), 0 land is expected (you don't own land) -> keep.
+#     - For houses ("h") and townhouses ("t"), 0 almost certainly means the
+#       land size was not recorded -> convert to NA.
+df <- df |>
+  mutate(landsize = if_else(
+    landsize == 0 & type %in% c("h", "t"),   # zero AND a house/townhouse
+    NA_real_,                                 # -> unknown
+    landsize                                  # otherwise keep as-is
+  ))
+
+# ---- Check the result -------------------------------------------------------
+sum(df$building_area == 0, na.rm = TRUE)   # should be 0
+sum(df$landsize == 0, na.rm = TRUE)        # only the unit zeros remain (~1632)
 ```
 
 ```{r}
