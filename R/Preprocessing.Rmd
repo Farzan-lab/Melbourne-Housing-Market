@@ -8,25 +8,33 @@ date: "2026-07-19"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+---
+# ---- Load packages ----------------------------------------------------------
+---
 ```{r}
 library(tidyverse)
+library(janitor)
 ```
 
+
 ```{r}
+# ---- Load Dataset ----------------------------------------------------------
 data_path = "C:/Users/farza/Job/Github/Melbourne-Housing-Market/data/raw/Melbourne_housing_FULL.csv"
 df = read.csv(data_path)
 ```
 
 ```{r}
-
+# ---- summary of dataset
+summary(df)
 ```
 
 ```{r}
-
+# ---- Analysing null values
+colSums(is.na(df))
 ```
 
 ```{r}
-
+df$BuildingArea
 ```
 
 ```{r}
