@@ -109,7 +109,7 @@ invalid_years <- df |>
 
 df <- df |>
   mutate(year_built = if_else( 
-    year_built < 1840 | year_built > 2018,   # condition: is it invalid?
+    year_built < 1800 | year_built > 2019,   # condition: is it invalid?
     NA_real_,                                 # if TRUE  -> set to NA
     year_built                                # if FALSE -> keep as-is
   ))
