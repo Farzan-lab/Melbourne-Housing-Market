@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ---
 ```{r}
 library(tidyverse)
-library(janitor)
+library(janitor)     # tidy up messy column names
 ```
 
 
@@ -34,11 +34,23 @@ colSums(is.na(df))
 ```
 
 ```{r}
-df$BuildingArea
+# ---- Step 1: Standardise column names ---------------------------------------
+# clean_names() converts every column name to lower_snake_case and removes
+# spaces / capitals. It does NOT fix spelling, so we rename the misspelled
+# and awkward columns ourselves with rename() -> new_name = old_name.
+df <- df |>
+  clean_names() |>
+  rename(
+    latitude       = lattitude,     # fix source misspelling
+    longitude      = longtitude,    # fix source misspelling
+    region_name    = regionname,    # add the missing underscore
+    property_count = propertycount
+  )
 ```
 
 ```{r}
-
+# ---- Check the result -------------------------------------------------------
+names(df)   # see the cleaned column names
 ```
 
 ```{r}
