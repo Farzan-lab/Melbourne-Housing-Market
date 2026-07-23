@@ -1,0 +1,271 @@
+// =============================================================================
+// Melbourne Housing Dashboard — DAX Library
+// -----------------------------------------------------------------------------
+// HOW TO USE
+//   Measures         : Home > New measure, then paste one block at a time.
+//   Calculated cols  : Modeling > New column.
+//   Date table       : Modeling > New table.
+//
+// Table name used throughout: 'melbourne_housing_clean'
+// =============================================================================
+
+
+// =============================================================================
+// SECTION 1 — CALCULATED COLUMNS
+// Create these FIRST; several measures and visuals depend on them.
+// =============================================================================
+
+// 1.1 Readable property type (replaces the raw h / t / u codes)
+Property Type =
+SWITCH(
+    'melbourne_housing_clean'[type],
+    "h", "House",
+    "t", "Townhouse",
+    "u", "Unit / Apartment",
+    "Unknown"
+)
+
+// 1.2 Distance bands — turns a continuous km value into readable buckets.
+//     The sort column below keeps them in the right order on an axis.
+Distance Band =
+VAR d = 'melbourne_housing_clean'[distance]
+RETURN
+SWITCH(
+    TRUE(),
+    d <= 5,  "0–5 km",
+    d <= 10, "5–10 km",
+    d <= 15, "10–15 km",
+    d <= 20, "15–20 km",
+    d <= 30, "20–30 km",
+    "30 km +"
+)
+
+// 1.3 Sort order for the distance bands.
+//     After creating it: select [Distance Band] > Column tools > Sort by column
+//     > Distance Band Sort.  Without this, the axis sorts alphabetically.
+Distance Band Sort =
+VAR d = 'melbourne_housing_clean'[distance]
+RETURN
+SWITCH(
+    TRUE(),
+    d <= 5,  1,
+    d <= 10, 2,
+    d <= 15, 3,
+    d <= 20, 4,
+    d <= 30, 5,
+    6
+)
+
+// 1.4 Price bands — useful for an affordability view.
+Price Band =
+VAR p = 'melbourne_housing_clean'[price]
+RETURN
+SWITCH(
+    TRUE(),
+    p <  500000,  "Under $500K",
+    p < 750000,   "$500K–750K",
+    p < 1000000,  "$750K–1M",
+    p < 1500000,  "$1M–1.5M",
+    p < 2000000,  "$1.5M–2M",
+    "$2M +"
+)
+
+Price Band Sort =
+VAR p = 'melbourne_housing_clean'[price]
+RETURN
+SWITCH(
+    TRUE(),
+    p <  500000, 1,
+    p <  750000, 2,
+    p < 1000000, 3,
+    p < 1500000, 4,
+    p < 2000000, 5,
+    6
+)
+
+
+// =============================================================================
+// SECTION 2 — DATE TABLE
+// Required for the year-over-year measures in Section 5.
+// After creating it:
+//   1. Right-click DateTable > Mark as date table > choose [Date]
+//   2. Model view: link DateTable[Date] -> melbourne_housing_clean[date]
+// =============================================================================
+
+DateTable =
+VAR MinDate = MIN('melbourne_housing_clean'[date])
+VAR MaxDate = MAX('melbourne_housing_clean'[date])
+RETURN
+ADDCOLUMNS(
+    CALENDAR(MinDate, MaxDate),
+    "Year",         YEAR([Date]),
+    "Month Number", MONTH([Date]),
+    "Month Name",   FORMAT([Date], "MMM"),
+    "Year-Month",   FORMAT([Date], "YYYY-MM"),
+    "Quarter No",   QUARTER([Date]),
+    "Year-Quarter", FORMAT([Date], "YYYY") & "-Q" & QUARTER([Date])
+)
+
+
+// =============================================================================
+// SECTION 3 — CORE MEASURES
+// These are the building blocks. Everything else composes them.
+// =============================================================================
+
+// The headline price measure. Use MEDIAN, not AVERAGE: the price distribution
+// is right-skewed (median $870K vs mean $1.05M), so the mean is pulled upward
+// by a small number of very expensive properties.
+Median Price = MEDIAN('melbourne_housing_clean'[price])
+
+Average Price = AVERAGE('melbourne_housing_clean'[price])
+
+// Number of sales — counts ROWS, not dollars.
+Total Sales = COUNTROWS('melbourne_housing_clean')
+
+Suburb Count = DISTINCTCOUNT('melbourne_housing_clean'[suburb])
+
+Min Price = MIN('melbourne_housing_clean'[price])
+Max Price = MAX('melbourne_housing_clean'[price])
+
+// Total money transacted. Keep this SEPARATE from price measures and never
+// label it as "price" — it tracks transaction volume, not price levels.
+Total Market Value = SUM('melbourne_housing_clean'[price])
+
+
+// =============================================================================
+// SECTION 4 — SHARE MEASURES
+// Correct denominators matter: share of SALES and share of VALUE are
+// different questions with very different answers.
+//   Share of sales : House 67.8% | Unit 21.7% | Townhouse 10.5%
+//   Share of value : House 77.7% | Unit 13.0% | Townhouse  9.3%
+// =============================================================================
+
+% Share of Sales =
+DIVIDE(
+    [Total Sales],
+    CALCULATE([Total Sales], REMOVEFILTERS('melbourne_housing_clean'[Property Type]))
+)
+
+% Share of Market Value =
+DIVIDE(
+    [Total Market Value],
+    CALCULATE([Total Market Value], REMOVEFILTERS('melbourne_housing_clean'[Property Type]))
+)
+
+
+// =============================================================================
+// SECTION 5 — TIME INTELLIGENCE
+// Requires the DateTable from Section 2 to be created, marked, and related.
+// =============================================================================
+
+Median Price PY =
+CALCULATE([Median Price], SAMEPERIODLASTYEAR('DateTable'[Date]))
+
+Median Price YoY % =
+VAR Curr = [Median Price]
+VAR Prev = [Median Price PY]
+RETURN IF(NOT ISBLANK(Prev), DIVIDE(Curr - Prev, Prev))
+
+// Smooths quarter-to-quarter noise. Useful because the first and last
+// quarters of this dataset are incomplete.
+Median Price 4Q Avg =
+AVERAGEX(
+    DATESINPERIOD('DateTable'[Date], MAX('DateTable'[Date]), -4, QUARTER),
+    [Median Price]
+)
+
+
+// =============================================================================
+// SECTION 6 — ANALYTICAL MEASURES
+// These are what lift the report from "charts" to "analysis".
+// =============================================================================
+
+// Normalises price by size, making suburbs of different housing stock
+// genuinely comparable.
+Median Price per Room =
+MEDIAN('melbourne_housing_clean'[price]) /
+    AVERAGE('melbourne_housing_clean'[rooms])
+
+// How much more a house costs than a unit, within the current filter context.
+// Answers: "is the house/unit gap wider in some suburbs than others?"
+House vs Unit Premium =
+VAR H = CALCULATE([Median Price], 'melbourne_housing_clean'[Property Type] = "House")
+VAR U = CALCULATE([Median Price], 'melbourne_housing_clean'[Property Type] = "Unit / Apartment")
+RETURN DIVIDE(H - U, U)
+
+// Suburb ranking by price (1 = most expensive).
+Suburb Price Rank =
+IF(
+    NOT ISBLANK([Median Price]),
+    RANKX(
+        ALLSELECTED('melbourne_housing_clean'[suburb]),
+        [Median Price],
+        ,
+        DESC,
+        DENSE
+    )
+)
+
+// Percentage difference between this suburb and the overall market.
+// Negative = cheaper than the city as a whole.
+Price vs Market % =
+VAR SuburbPrice = [Median Price]
+VAR MarketPrice = CALCULATE([Median Price], REMOVEFILTERS('melbourne_housing_clean'[suburb]))
+RETURN DIVIDE(SuburbPrice - MarketPrice, MarketPrice)
+
+
+// =============================================================================
+// SECTION 7 — DATA QUALITY GUARDS
+// A suburb median built on 3 sales is not trustworthy. Professional reports
+// say so rather than presenting every number with equal confidence.
+// =============================================================================
+
+// Blanks out the median when the sample is too small, so unreliable
+// suburbs simply drop out of ranked charts instead of topping them.
+Median Price (Reliable) =
+IF([Total Sales] >= 30, [Median Price])
+
+// A plain-language flag you can drop into a table or a tooltip.
+Sample Size Warning =
+IF(
+    [Total Sales] < 30,
+    "⚠ Only " & [Total Sales] & " sales — treat with caution",
+    ""
+)
+
+
+// =============================================================================
+// SECTION 8 — DYNAMIC TITLES
+// Bind these to a visual's title: select the visual > Format > Title >
+// click the fx button next to Text > Field value > pick the measure.
+// The title then updates as the user filters.
+// =============================================================================
+
+Title — Price Trend =
+VAR SelType =
+    IF(
+        ISFILTERED('melbourne_housing_clean'[Property Type]),
+        CONCATENATEX(
+            VALUES('melbourne_housing_clean'[Property Type]),
+            'melbourne_housing_clean'[Property Type],
+            ", "
+        ),
+        "all property types"
+    )
+RETURN "Median price over time — " & SelType
+
+Title — Suburbs =
+VAR N = [Suburb Count]
+RETURN "Median price by suburb — " & N & " suburbs in view"
+
+// A one-line written takeaway that recalculates with the filters.
+Insight — Market Direction =
+VAR Chg = [Median Price YoY %]
+RETURN
+SWITCH(
+    TRUE(),
+    ISBLANK(Chg), "Not enough history to compare.",
+    Chg > 0.02,  "Prices are rising — up " & FORMAT(Chg, "0.0%") & " year on year.",
+    Chg < -0.02, "Prices are cooling — down " & FORMAT(ABS(Chg), "0.0%") & " year on year.",
+    "Prices are broadly flat year on year."
+)
