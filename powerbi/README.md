@@ -1,8 +1,15 @@
 <div align="center">
 
-# 📊 Power BI Dashboard — Build Specification
+# 📊 Power BI Dashboard
 
-**Melbourne Housing Market · January 2016 – March 2018**
+**The presentation layer of the project — a three-page interactive report built on the cleaned R output.**
+
+Measures in **DAX** · Styling via **theme files** · Three pages, one shared filter context
+
+[![Power BI](https://img.shields.io/badge/Power%20BI-Desktop-F2C811?logo=powerbi&logoColor=black)](https://powerbi.microsoft.com/)
+[![DAX](https://img.shields.io/badge/DAX-20%2B%20measures-1F3864)](https://learn.microsoft.com/en-us/dax/)
+[![Themes](https://img.shields.io/badge/themes-3%20variants-6366F1)](#-files-in-this-folder)
+![Status](https://img.shields.io/badge/status-in%20progress-yellow)
 
 </div>
 
@@ -26,10 +33,10 @@
 
 | File | Purpose |
 |------|---------|
-| `measures.dax` | The DAX library — every calculation the report depends on. See the section below. |
-| `melbourne_theme.json` | Light theme: blue and neutral, clean and corporate. |
-| `melbourne_theme_dark.json` | Dark theme: navy background, bright blue accent, centred card headers. |
-| `melbourne_theme_violet.json` | Light theme: violet monochrome with tinted card borders. |
+| `measures.dax` | The DAX library — every calculation the report depends on. |
+| `melbourne_theme.json` | **Light · blue** — clean and corporate, neutral background. |
+| `melbourne_theme_dark.json` | **Dark · navy** — bright blue accent, centred card headers. |
+| `melbourne_theme_violet.json` | **Light · violet** — monochrome palette, tinted card borders. |
 | `README.md` | This build specification. |
 
 Themes are applied via **View → Themes → Browse for themes**. All three work with
@@ -39,7 +46,10 @@ the same measures, so you can switch freely without rebuilding anything.
 
 ## 🧮 The DAX library
 
-### What it is
+<details open>
+<summary><strong>What it is</strong></summary>
+
+<br>
 
 `measures.dax` is a plain text file containing every calculation this report
 needs, written in **DAX** (Data Analysis Expressions) — the formula language
@@ -50,14 +60,19 @@ It defines three different kinds of object, and each has its own home in Power B
 
 | Section | Object type | Where it goes | What it does |
 |:---:|---|---|---|
-| 1 | Calculated columns | `Modeling → New column` | Adds a new column to every row of the table, computed once when the data loads. |
+| 1 | Calculated columns | `Modeling → New column` | Adds a column to every row, computed once when the data loads. |
 | 2 | Calculated table | `Modeling → New table` | Builds the date table used by all time-based calculations. |
-| 3–8 | Measures | `Home → New measure` | Formulas evaluated **live**, re-calculating every time the user changes a filter. |
+| 3–8 | Measures | `Home → New measure` | Formulas evaluated **live**, recalculating whenever a filter changes. |
 
-Getting these confused is the most common mistake — pasting a measure into
-`New column` will throw an error.
+> ⚠️ Getting these confused is the most common mistake — pasting a measure into
+> `New column` will throw an error.
 
-### Why the report needs it
+</details>
+
+<details>
+<summary><strong>Why the report needs it</strong></summary>
+
+<br>
 
 **Because a dashboard without measures is just a table.** Dragging a raw `price`
 field onto a chart makes Power BI guess an aggregation, and its default guess is
@@ -77,50 +92,60 @@ data has no column for "how this suburb compares to the market", "growth since
 last year", or "is this sample large enough to trust". Those are analytical ideas,
 and DAX is where they get defined.
 
-### How it helps, section by section
+</details>
 
-**Sections 1–2 — the foundation.** `Property Type` turns the cryptic `h`/`t`/`u`
+<details>
+<summary><strong>How it helps, section by section</strong></summary>
+
+<br>
+
+**Sections 1–2 · the foundation.** `Property Type` turns the cryptic `h`/`t`/`u`
 codes into labels a reader understands. `Distance Band` and `Price Band` convert
 continuous numbers into readable buckets, each with a companion *Sort* column so
 axes appear in logical rather than alphabetical order. The date table gives every
 day in the period a row, including days with no sales, which is what stops time
 charts from developing gaps — and it is a hard requirement for Section 5.
 
-**Section 3 — the vocabulary.** `Median Price`, `Total Sales`, `Suburb Count`, and
+**Section 3 · the vocabulary.** `Median Price`, `Total Sales`, `Suburb Count`, and
 `Total Market Value`. Everything else is built from these. `Median Price` is
 deliberately a median rather than an average: the price distribution is
 right-skewed (median $870K against a mean of $1.05M), so an average describes a
 property that barely exists.
 
-**Section 4 — asking the right question.** `% Share of Sales` and
+**Section 4 · asking the right question.** `% Share of Sales` and
 `% Share of Market Value` look similar but answer different things: houses are
 67.8% of transactions and 77.7% of money. Having both named separately makes it
 much harder to accidentally label one as the other.
 
-**Section 5 — change over time.** `Median Price YoY %` and `Median Price 4Q Avg`
+**Section 5 · change over time.** `Median Price YoY %` and `Median Price 4Q Avg`
 turn a snapshot into a trend. The moving average matters here because the first
 and last quarters of this dataset are incomplete, and raw quarter-to-quarter
 figures wobble accordingly.
 
-**Section 6 — the actual analysis.** This is where the report stops describing and
+**Section 6 · the actual analysis.** This is where the report stops describing and
 starts explaining. `Median Price per Room` normalises for size so suburbs with
 different housing stock become comparable. `House vs Unit Premium` quantifies the
 gap between the two markets. `Suburb Price Rank` and `Price vs Market %` place
 each suburb against every other and against the city as a whole.
 
-**Section 7 — honesty guards.** `Median Price (Reliable)` blanks out any suburb
+**Section 7 · honesty guards.** `Median Price (Reliable)` blanks out any suburb
 with fewer than 30 sales, and `Sample Size Warning` says so in plain language.
 Without this, a suburb with three recorded sales can top the "most expensive"
 chart on the strength of a single mansion. Excluding thin samples from rankings
 and flagging them in tables is the difference between a report that *looks*
 confident and one that *is* trustworthy.
 
-**Section 8 — writing that updates itself.** `Title — Price Trend` rewrites a
+**Section 8 · writing that updates itself.** `Title — Price Trend` rewrites a
 chart's heading to name whatever the user has filtered to, and
 `Insight — Market Direction` produces a full sentence of interpretation that
 changes with the data. The reader gets a written takeaway, not just a shape.
 
-### One place, not fifteen
+</details>
+
+<details>
+<summary><strong>One place, not fifteen</strong></summary>
+
+<br>
 
 The practical payoff is maintenance. If the definition of a headline figure ever
 changes, it changes in one measure and every visual across all three pages
@@ -128,23 +153,22 @@ updates at once. Calculations buried in individual charts have to be found and
 fixed one at a time — and the ones that get missed are how dashboards start
 contradicting themselves.
 
+</details>
+
 ---
 
 ## 🚀 Setup order
 
 Follow this order — later steps depend on earlier ones.
 
-1. **Apply a theme.** View → Themes → Browse for themes → pick one of the three
-   theme files. This alone replaces the decorative italic serif with a clean
-   sans-serif and restyles every card and chart.
-2. **Create the calculated columns** (Section 1 of `measures.dax`), including the
-   two *Sort* columns.
-3. **Set the sort order.** Select `Distance Band` → Column tools → Sort by column
-   → `Distance Band Sort`. Repeat for `Price Band` → `Price Band Sort`.
-4. **Create the date table** (Section 2), mark it as a date table, and relate
-   `DateTable[Date]` → `melbourne_housing_clean[date]`.
-5. **Create the measures** (Sections 3–8).
-6. **Build the pages** as specified below.
+| # | Step | Where |
+|:-:|------|-------|
+| 1 | **Apply a theme** | View → Themes → Browse for themes |
+| 2 | **Create the calculated columns** (Section 1), including both *Sort* columns | Modeling → New column |
+| 3 | **Set the sort order**: `Distance Band` → sort by `Distance Band Sort`; same for `Price Band` | Column tools → Sort by column |
+| 4 | **Create the date table** (Section 2), mark it as a date table, relate `DateTable[Date]` → `melbourne_housing_clean[date]` | Modeling → New table, then Model view |
+| 5 | **Create the measures** (Sections 3–8) | Home → New measure |
+| 6 | **Build the pages** as specified below | Report view |
 
 > **How to paste:** open `measures.dax` in any text editor. For each block, click
 > the matching button in Power BI, clear the default text in the formula bar, then
@@ -160,16 +184,19 @@ Follow this order — later steps depend on earlier ones.
 
 ## 🔧 Fixes to the current report
 
-Two visuals currently measure the wrong thing. These are analytical errors, not
-cosmetic ones, and should be fixed before adding anything new.
+Two visuals currently measure the wrong thing. These are **analytical errors, not
+cosmetic ones**, and should be fixed before adding anything new.
 
-### The line chart is showing transaction volume, not price
+<details open>
+<summary><strong>🚨 The line chart shows transaction volume, not price</strong></summary>
+
+<br>
 
 It is bound to `Sum of price`. Summing price across a quarter mostly measures
 **how many properties sold**, not what they cost:
 
 | Correlation of `Sum(price)` with… | Value |
-|---|---|
+|---|:---:|
 | number of sales | **0.998** |
 | median price | **−0.439** |
 
@@ -180,7 +207,12 @@ opposite of the truth.
 
 **Fix:** replace the Y-axis field with the `Median Price` measure.
 
-### The column chart's title does not match its measure
+</details>
+
+<details>
+<summary><strong>⚠️ The column chart's title does not match its measure</strong></summary>
+
+<br>
 
 It is bound to `%GT Sum of price` — share of total **value** — but titled
 *"Share of sales by property type"*. Those are different questions:
@@ -195,7 +227,12 @@ It is bound to `%GT Sum of price` — share of total **value** — but titled
 value measure and retitle it *"Houses account for 78% of total market value"*.
 Both are valid — they must simply agree.
 
-### Smaller corrections
+</details>
+
+<details>
+<summary><strong>Smaller corrections</strong></summary>
+
+<br>
 
 - Two KPI cards show the same figure (`Count of address` ≈ `Total sale` ≈ 27,247).
   Drop one; use `Suburb Count` instead.
@@ -206,17 +243,21 @@ Both are valid — they must simply agree.
 - Slicer headers are inconsistently cased (`Property Type`, `date`, `rooms`,
   `suburb`). Standardise to: `Property type`, `Date range`, `Rooms`, `Suburb`.
 
+</details>
+
 ---
 
 ## 📄 Page 1 — Market Overview
 
-> **The question this page answers:** what is the market doing overall?
+> 💭 **The question this page answers:** what is the market doing overall?
 
 ### Header band
-A text box across the top: **Melbourne Housing Market** with the subtitle
-*January 2016 – March 2018 · 27,247 recorded sales*.
+A shape across the top with **Melbourne Housing Market**, the subtitle
+*January 2016 – March 2018 · 27,247 recorded sales*, and a **Page navigator**
+(`Insert → Buttons → Navigator`) aligned right.
 
-### Slicers (one row, directly under the header)
+### Slicers
+
 | Field | Style |
 |---|---|
 | `Property Type` | Tile |
@@ -224,7 +265,11 @@ A text box across the top: **Melbourne Housing Market** with the subtitle
 | `region_name` | Dropdown |
 | `rooms` | Dropdown |
 
-### KPI cards (one row of five)
+> Turn on **View → Sync slicers** and enable *Sync* + *Visible* for all three
+> pages, so a filter set here survives when the reader navigates away.
+
+### KPI cards
+
 | Measure | Format |
 |---|---|
 | `Median Price` | Display units: None, 0 decimals |
@@ -240,17 +285,17 @@ A text box across the top: **Melbourne Housing Market** with the subtitle
 ### Visuals
 
 | # | Visual | Fields | Title |
-|---|--------|--------|-------|
+|:-:|--------|--------|-------|
 | 1 | **Line chart** (large, left) | X: `DateTable[Year-Quarter]` · Y: `Median Price` · Legend: `Property Type` | Bind to `Title — Price Trend` |
 | 2 | **Donut chart** (right) | Legend: `Property Type` · Values: `Total Sales` | `Houses are two in three sales` |
 | 3 | **Clustered bar** (bottom left) | Y: `region_name` · X: `Median Price` | `Southern Metro leads on price` |
 | 4 | **Card (text)** (bottom right) | `Insight — Market Direction` | *(no title)* |
 
-**On visual 1:** the three-line split is the point of this page. Houses fell from
+**On visual 1 —** the three-line split is the point of this page. Houses fell from
 a $1,101K to a $933K median while units rose from $546K to $606K — a divergence
 that a single averaged line completely hides.
 
-**On visual 1's axis:** use quarters, not years. The dataset starts in late
+**On visual 1's axis —** use quarters, not years. The dataset starts in late
 January 2016 and ends mid-March 2018, so both end years are partial; a
 three-point yearly line exaggerates the final drop.
 
@@ -258,7 +303,7 @@ three-point yearly line exaggerates the final drop.
 
 ## 📄 Page 2 — Suburb Explorer
 
-> **The question this page answers:** where can I afford to buy?
+> 💭 **The question this page answers:** where can I afford to buy?
 
 ### Slicers
 Same four as Page 1, plus a `Price Band` slicer.
@@ -266,44 +311,46 @@ Same four as Page 1, plus a `Price Band` slicer.
 ### Visuals
 
 | # | Visual | Fields | Notes |
-|---|--------|--------|-------|
-| 1 | **Map** (large) | Latitude: `latitude` · Longitude: `longitude` · Bubble size: `Total Sales` · Colour saturation: `Median Price (Reliable)` | Melbourne-wide view |
-| 2 | **Bar chart — top 10** | Y: `suburb` · X: `Median Price (Reliable)` · Top-N filter: 10 by that measure | `Most expensive suburbs` |
+|:-:|--------|--------|-------|
+| 1 | **Map** (large) | Lat: `latitude` · Long: `longitude` · Size: `Total Sales` · Saturation: `Median Price (Reliable)` | Melbourne-wide view |
+| 2 | **Bar chart — top 10** | Y: `suburb` · X: `Median Price (Reliable)` · Top-N filter: 10 | `Most expensive suburbs` |
 | 3 | **Bar chart — bottom 10** | Same, Bottom-N 10 | `Most affordable suburbs` |
-| 4 | **Table** | `suburb`, `Median Price`, `Total Sales`, `Suburb Price Rank`, `Price vs Market %`, `Sample Size Warning` | Conditional-format `Price vs Market %` red→green |
+| 4 | **Table** | `suburb`, `Median Price`, `Total Sales`, `Suburb Price Rank`, `Price vs Market %`, `Sample Size Warning` | Conditional-format `Price vs Market %` red → green |
 
-**Why `Median Price (Reliable)` and not `Median Price` on the ranked charts:**
-it blanks out suburbs with fewer than 30 sales. Without that guard, a suburb
-with three recorded sales can top the "most expensive" chart on the strength of
-one mansion. Excluding thin samples from rankings — and flagging them in the
-table via `Sample Size Warning` — is what separates a report that looks
-confident from one that *is* trustworthy.
+> **Why `Median Price (Reliable)` and not `Median Price` on the ranked charts:**
+> it blanks out suburbs with fewer than 30 sales. Without that guard, a suburb
+> with three recorded sales can top the "most expensive" chart on the strength of
+> one mansion. Excluding thin samples from rankings — and flagging them in the
+> table via `Sample Size Warning` — is what separates a report that looks
+> confident from one that *is* trustworthy.
 
 ---
 
 ## 📄 Page 3 — Price Drivers
 
-> **The question this page answers:** what actually drives the price?
+> 💭 **The question this page answers:** what actually drives the price?
 
 ### Visuals
 
 | # | Visual | Fields | Title |
-|---|--------|--------|-------|
+|:-:|--------|--------|-------|
 | 1 | **Column chart** | X: `Distance Band` · Y: `Median Price` · Legend: `Property Type` | `Price falls with distance — but not evenly` |
-| 2 | **Column chart** | X: `rooms` (filter to 1–6) · Y: `Median Price` | `Each extra room adds roughly $200K` |
+| 2 | **Column chart** | X: `rooms` (filter 1–6) · Y: `Median Price` | `Each extra room adds roughly $200K` |
 | 3 | **Scatter chart** | X: `distance` · Y: `Median Price` · Legend: `Property Type` · Details: `suburb` · Size: `Total Sales` | `Suburbs by price and distance` |
-| 4 | **Column chart** | X: `Price Band` · Y: `Total Sales` | `Where the market actually transacts` |
+| 4 | **100% stacked bar** | Y: `region_name` · X: `Total Sales` · Legend: `Price Band` | `Every region has a different price mix` |
 | 5 | **Card (text)** | `House vs Unit Premium` | `House premium over units` |
 
-**On visual 1:** the relationship is stepped rather than linear. The 0–5 km and
+**On visual 1 —** the relationship is stepped rather than linear. The 0–5 km and
 5–10 km bands are close to each other; the real fall begins after 10 km. Adding
 `Property Type` as a legend shows whether that pattern holds for units as well
-as houses — which is the kind of two-dimensional question a single chart cannot
-answer.
+as houses — the kind of two-dimensional question a single chart cannot answer.
 
-**On visual 3:** the scatter is the analytical centrepiece. Suburbs sitting well
-*below* the general price/distance trend are the value opportunities — close to
+**On visual 3 —** the scatter is the analytical centrepiece. Suburbs sitting well
+*below* the general price/distance trend are the value opportunities: close to
 the city but cheaper than their distance would predict.
+
+**On visual 4 —** a median hides distribution. Two regions can share a median and
+have completely different markets; this chart shows the mix behind the number.
 
 ---
 
@@ -311,14 +358,18 @@ the city but cheaper than their distance would predict.
 
 Applying these consistently is most of what makes a report look professional.
 
-**Typography.** The theme sets Segoe UI throughout. Decorative italic serif faces
+<details open>
+<summary><strong>The six rules</strong></summary>
+
+<br>
+
+**Typography.** The themes set Segoe UI throughout. Decorative italic serif faces
 read as invitations, not analysis. Never override this per-visual.
 
-**Colour carries meaning.** House = blue `#2E86C1`, Townhouse = orange `#E67E22`,
-Unit = green `#27AE60` — and these must be identical on every page. A reader who
-learns "blue = house" on page 1 should not have to relearn it on page 3.
-Everything that is not a property type stays neutral grey, so colour always
-signals something.
+**Colour carries meaning.** Each theme assigns a fixed colour to each property
+type, and those assignments must hold on every page. A reader who learns
+"blue = house" on page 1 should not have to relearn it on page 3. Everything that
+is *not* a property type stays neutral, so colour always signals something.
 
 **Titles are sentences, not labels.** *"House prices fell while unit prices rose"*
 does the reader's work for them; *"Median price by type"* makes them do it
@@ -328,30 +379,34 @@ measures in Section 8.
 **Alignment.** Select visuals together → Format → Align → Distribute. Misaligned
 edges are the single most common tell of an amateur report.
 
-**Whitespace.** Resist filling every pixel. The current Overview page has a bar
-chart floating in a large empty area — either grow the chart or add a visual
-that earns the space.
+**Whitespace.** Resist filling every pixel — but do not leave a chart floating in
+a large empty area either. Either grow the visual or add one that earns the space.
 
 **State the limits.** Put a small footnote on Page 1: *"2016 and 2018 are partial
 years. Suburb figures based on fewer than 30 sales are excluded from rankings."*
 Naming a limitation builds more trust than hiding it.
 
+</details>
+
 ---
 
 ## ✅ Verification numbers
 
-After building, check these against the unfiltered report. A mismatch means
+After building, check these against the **unfiltered** report. A mismatch means
 something is bound incorrectly.
 
 | Measure | Expected |
-|---|---|
+|---|---:|
 | `Total Sales` | 27,247 |
 | `Median Price` | $870,000 |
 | `Average Price` | $1,050,173 |
 | `Suburb Count` | 345 |
 | `Min Price` / `Max Price` | $85,000 / $11,200,000 |
 
-Median price by property type:
+<details>
+<summary><strong>Median price by property type</strong></summary>
+
+<br>
 
 | Type | Median |
 |---|---:|
@@ -359,8 +414,12 @@ Median price by property type:
 | Townhouse | $850,000 |
 | Unit / Apartment | $580,000 |
 
-Median price by quarter — use this to confirm the line chart is bound to
-`Median Price` and not to a sum:
+</details>
+
+<details open>
+<summary><strong>Median price by quarter — the line chart check</strong></summary>
+
+<br>
 
 | Quarter | Median | Sales |
 |---|---:|---:|
@@ -370,5 +429,7 @@ Median price by quarter — use this to confirm the line chart is bound to
 | 2017 Q3 | $850,000 | 5,272 |
 | 2018 Q1 | $836,500 | 3,674 |
 
-> If your line chart dips at 2017 Q1, it is still bound to a sum. That quarter
-> has the **highest** median of the entire period and the **fewest** sales.
+> 🚩 If your line chart **dips** at 2017 Q1, it is still bound to a sum. That
+> quarter has the **highest** median of the entire period and the **fewest** sales.
+
+</details>
