@@ -251,53 +251,244 @@ Both are valid — they must simply agree.
 
 > 💭 **The question this page answers:** what is the market doing overall?
 
-### Header band
-A shape across the top with **Melbourne Housing Market**, the subtitle
-*January 2016 – March 2018 · 27,247 recorded sales*, and a **Page navigator**
-(`Insert → Buttons → Navigator`) aligned right.
+**Status:** ✅ Built. This section records what is actually on the page, with the
+exact positions and formatting applied, so the layout can be rebuilt or audited
+without guesswork.
 
-### Slicers
+Canvas is **1280 × 720**. The filter panel occupies the left column
+(`X = 10–180`); all content sits in the remaining `X = 190–1270`.
 
-| Field | Style |
+### Layout map
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  HEADER BAND  1280×64                                        │
+├────────┬─────────────────────────────────────────────────────┤
+│ FILTER │  KPI  │  KPI  │  KPI  │  KPI  │  KPI    (5 × 210×90)│
+│ PANEL  ├───────────────────────────┬─────────────────────────┤
+│        │  Line chart — price trend │  Donut — sales share    │
+│ 170    │  640×260                  │  432×260                │
+│ ×620   ├───────────────────────────┼─────────────────────────┤
+│        │  Bar — median by region   │  Card — insight  432×130│
+│        │  640×240                  ├─────────────────────────┤
+│        │                           │  Text — limitations note│
+├────────┴───────────────────────────┴─────────────────────────┤
+│  PAGE NAVIGATOR  1080×44                                     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+<details open>
+<summary><strong>Canvas elements</strong></summary>
+
+<br>
+
+| Element | Type | X | Y | W | H | Formatting applied |
+|---|---|--:|--:|--:|--:|---|
+| Header band | Rectangle shape | 0 | 0 | 1280 | 64 | Solid fill in the theme's darkest tone; border off |
+| Title | Text box | 20 | 12 | — | — | Segoe UI Semibold, 18pt, white |
+| Subtitle | Text box | 20 | 38 | — | — | Segoe UI, 10pt, muted grey |
+| Filter panel backing | Rectangle shape | 10 | 76 | 170 | 620 | Card fill, 1px tinted border, 6px rounded corners |
+| Page navigator | Navigator button set | 190 | 660 | 1080 | 44 | Horizontal orientation, 8px padding; `Default` / `Selected` / `Hover` states styled separately |
+
+The navigator is copied to all three pages at identical coordinates, so it does
+not shift as the reader moves between them.
+
+</details>
+
+<details open>
+<summary><strong>Slicers — synced across all three pages</strong></summary>
+
+<br>
+
+| Field | Style | X | Y | W | H | Header label |
+|---|---|--:|--:|--:|--:|---|
+| `Property Type` | Vertical list | 20 | 88 | 150 | 110 | Property type |
+| `date` | Between | 20 | 206 | 150 | 90 | Date range |
+| `region_name` | Dropdown | 20 | 304 | 150 | 60 | Region |
+| `rooms` | Dropdown | 20 | 372 | 150 | 60 | Rooms |
+
+**Sync applied.** Each slicer has *Sync* and *Visible* enabled for all three pages
+via **View → Sync slicers**. A filter set here survives navigation — the reader
+who selects "Unit / Apartment" on this page finds it still applied on the Suburb
+Explorer, and the slicer itself is still there to change it.
+
+`Property Type` is used rather than the raw `type` field, so the reader sees
+*House / Townhouse / Unit* instead of `h` / `t` / `u`.
+
+</details>
+
+<details open>
+<summary><strong>KPI cards</strong></summary>
+
+<br>
+
+Five cards in one row at `Y = 88`, each `210 × 90`, spaced 8px apart.
+
+| # | Measure | X | Card title | Decimals |
+|:-:|---|--:|---|:-:|
+| 1 | `Median Price` | 190 | Median price | 0 |
+| 2 | `Average Price` | 408 | Average price | 0 |
+| 3 | `Total Sales` | 626 | Total sales | 0 |
+| 4 | `Suburb Count` | 844 | Suburbs | 0 |
+| 5 | `Median Price YoY %` | 1062 | Median YoY | 1 |
+
+**Display units set to `None` on all five.** This is deliberate: the default
+auto-units render 27,247 as the ambiguous `27.247K`. Explicit units with zero
+decimals give a figure that reads exactly as written.
+
+**Median and average sit side by side on purpose.** The gap between $870K and
+$1.05M is itself a finding — it shows a minority of very expensive properties
+pulling the mean upward, and tells the reader which of the two to trust.
+
+</details>
+
+<details open>
+<summary><strong>Visual 1 — Price trend (line chart)</strong></summary>
+
+<br>
+
+Position `X = 190, Y = 190, W = 640, H = 260`.
+
+| Field well | Bound to |
 |---|---|
-| `Property Type` | Tile |
-| `date` | Between (range slider) |
-| `region_name` | Dropdown |
-| `rooms` | Dropdown |
+| X-axis | `DateTable[Year-Quarter]` |
+| Y-axis | `Median Price` |
+| Legend | `Property Type` |
 
-> Turn on **View → Sync slicers** and enable *Sync* + *Visible* for all three
-> pages, so a filter set here survives when the reader navigates away.
+**Formatting applied**
+- Title bound to the `Title — Price Trend` measure via **Format → Title → fx →
+  Field value**, so the heading names whatever the reader has filtered to.
+- Y-axis display units: `Thousands`.
+- One line per property type, coloured from the theme palette.
 
-### KPI cards
+**Why the axis uses `DateTable[Year-Quarter]` and not the auto date hierarchy.**
+The auto hierarchy Power BI generates on the `date` column is independent of the
+marked date table, and mixing the two produces inconsistent results. Quarters are
+used rather than years because the data starts in late January 2016 and ends
+mid-March 2018 — a three-point yearly line makes the final partial year look like
+a crash.
 
-| Measure | Format |
+**Why this visual is the largest on the page.** It carries the page's main
+finding: houses fell from a $1,101K to a $933K median while units rose from
+$546K to $606K. A single averaged line hides that divergence completely; three
+lines make it the first thing the reader sees.
+
+**Verification:** 2017 Q1 must be the **highest** point of the overall trend
+($940K). If it dips there, the Y-axis is still bound to a sum — that quarter has
+the highest median and the fewest sales of the whole period.
+
+</details>
+
+<details open>
+<summary><strong>Visual 2 — Sales share (donut chart)</strong></summary>
+
+<br>
+
+Position `X = 838, Y = 190, W = 432, H = 260`.
+
+| Field well | Bound to |
 |---|---|
-| `Median Price` | Display units: None, 0 decimals |
-| `Average Price` | Display units: None, 0 decimals |
-| `Total Sales` | Display units: None, 0 decimals |
-| `Suburb Count` | Whole number |
-| `Median Price YoY %` | Percentage, 1 decimal |
+| Legend | `Property Type` |
+| Values | `Total Sales` |
 
-> Keeping median and average side by side is deliberate: the gap between $870K
-> and $1.05M is itself the insight — it shows a minority of very expensive
-> properties pulling the average up.
+**Formatting applied**
+- Detail labels → **Label contents: `Category, percent of total`**.
+- Title: *"Houses are two in three sales"*.
 
-### Visuals
+**Bound to `Total Sales`, not `price`.** This is the corrected version of the
+original chart, which summed `price` and therefore showed share of market
+**value** (77.7% houses) under a title claiming share of **sales** (67.8%).
+Both are legitimate figures; they are simply different questions, and the measure
+must match the claim in the title.
 
-| # | Visual | Fields | Title |
-|:-:|--------|--------|-------|
-| 1 | **Line chart** (large, left) | X: `DateTable[Year-Quarter]` · Y: `Median Price` · Legend: `Property Type` | Bind to `Title — Price Trend` |
-| 2 | **Donut chart** (right) | Legend: `Property Type` · Values: `Total Sales` | `Houses are two in three sales` |
-| 3 | **Clustered bar** (bottom left) | Y: `region_name` · X: `Median Price` | `Southern Metro leads on price` |
-| 4 | **Card (text)** (bottom right) | `Insight — Market Direction` | *(no title)* |
+**Verification:** House ≈ 67.8%, Unit ≈ 21.7%, Townhouse ≈ 10.5%. Seeing 77.7%
+means the visual is still bound to a price sum.
 
-**On visual 1 —** the three-line split is the point of this page. Houses fell from
-a $1,101K to a $933K median while units rose from $546K to $606K — a divergence
-that a single averaged line completely hides.
+</details>
 
-**On visual 1's axis —** use quarters, not years. The dataset starts in late
-January 2016 and ends mid-March 2018, so both end years are partial; a
-three-point yearly line exaggerates the final drop.
+<details open>
+<summary><strong>Visual 3 — Median price by region (bar chart)</strong></summary>
+
+<br>
+
+Position `X = 190, Y = 460, W = 640, H = 240`.
+
+| Field well | Bound to |
+|---|---|
+| Y-axis | `region_name` |
+| X-axis | `Median Price` |
+
+**Formatting applied**
+- Sorted **descending** by `Median Price` (three-dot menu → Sort axis).
+- Data labels on, display units `Millions`, 2 decimals.
+- Bar colour set to a **gradient** via **Format → Bars → Colors → fx →
+  Gradient**, based on `Median Price`.
+
+**Why horizontal bars.** Region names are long (*Southern Metropolitan*,
+*Northern Victoria*). On a vertical column chart those labels rotate or truncate;
+horizontal bars give each one a full line of readable text.
+
+**Why sorted, not alphabetical.** The chart exists to communicate a ranking. Left
+in alphabetical order, the reader has to reconstruct that ranking by eye.
+
+**Why a gradient rather than one colour per region.** Every bar measures the same
+thing — regions differ in *magnitude*, not in *kind*. Distinct colours would imply
+a categorical difference that isn't there, and would collide with the palette
+already carrying meaning for property type. A single-hue gradient reinforces the
+ranking instead of competing with it.
+
+</details>
+
+<details open>
+<summary><strong>Visual 4 — Written insight (card)</strong></summary>
+
+<br>
+
+Position `X = 838, Y = 460, W = 432, H = 130`. Bound to the
+`Insight — Market Direction` measure.
+
+**Formatting applied**
+- Callout value font size reduced to 13pt (the 26pt default is sized for numbers).
+- **Word wrap enabled** — without it the sentence is truncated.
+- Category label off; title set to *"What the data says"*.
+
+This card returns a full sentence rather than a figure, and it rewrites itself as
+the reader filters. It gives the page a written takeaway instead of leaving every
+conclusion to be inferred from shapes.
+
+</details>
+
+<details open>
+<summary><strong>Visual 5 — Limitations note (text box)</strong></summary>
+
+<br>
+
+Position `X = 838, Y = 600, W = 432, H = 60`. Segoe UI 9pt, muted grey.
+
+> 2016 and 2018 are partial years. Suburb figures based on fewer than 30 sales
+> are excluded from rankings.
+
+Stating a limitation openly builds more trust than leaving it to be discovered.
+It also pre-empts the obvious objection to the trend line — that the last period
+looks unusually low — by naming the reason before the reader has to ask.
+
+</details>
+
+<details>
+<summary><strong>Interactions and behaviours</strong></summary>
+
+<br>
+
+- **Cross-filtering** is left at the Power BI default: clicking a region bar or a
+  donut segment filters every other visual on the page.
+- **Slicer sync** carries the filter context to Pages 2 and 3.
+- **Dynamic titles** (visual 1) and **dynamic text** (visual 4) both respond to
+  the active filters, so the written parts of the page never contradict the
+  charts.
+- **Alignment** was applied per row via **Format → Align → Align top** and
+  **Distribute horizontally**.
+
+</details>
 
 ---
 
