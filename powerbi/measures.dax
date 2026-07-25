@@ -269,3 +269,53 @@ SWITCH(
     Chg < -0.02, "Prices are cooling — down " & FORMAT(ABS(Chg), "0.0%") & " year on year.",
     "Prices are broadly flat year on year."
 )
+
+
+// =============================================================================
+// SECTION 9 — PAGE 2 (SUBURB EXPLORER) INSIGHT
+// A written, filter-aware takeaway for the Suburb Explorer page, mirroring
+// the Insight measure used on the Overview page but focused on suburbs.
+// =============================================================================
+
+// Names the most affordable reliable suburb in the current filter context, and
+// how far below the market it sits. Only considers suburbs with >= 30 sales, so
+// it never recommends a suburb whose price rests on a handful of transactions.
+Insight — Best Value Suburb =
+VAR MarketMedian =
+    CALCULATE([Median Price], REMOVEFILTERS('melbourne_housing_clean'[suburb]))
+VAR ReliableSuburbs =
+    FILTER(
+        VALUES('melbourne_housing_clean'[suburb]),
+        [Total Sales] >= 30
+    )
+VAR Cheapest =
+    TOPN(1, ReliableSuburbs, [Median Price], ASC)
+VAR CheapestName =
+    MAXX(Cheapest, 'melbourne_housing_clean'[suburb])
+VAR CheapestPrice =
+    MAXX(Cheapest, [Median Price])
+VAR Gap =
+    DIVIDE(MarketMedian - CheapestPrice, MarketMedian)
+RETURN
+IF(
+    ISBLANK(CheapestName),
+    "No suburb in view has enough sales (30+) to rank reliably.",
+    "Most affordable reliable suburb: " & CheapestName &
+    " at " & FORMAT(CheapestPrice, "$#,0") &
+    " — " & FORMAT(Gap, "0%") & " below the market median."
+)
+
+// A compact summary of the spread across suburbs currently in view.
+Insight — Suburb Spread =
+VAR ReliableSuburbs =
+    FILTER(VALUES('melbourne_housing_clean'[suburb]), [Total Sales] >= 30)
+VAR Dearest  = MAXX(ReliableSuburbs, [Median Price])
+VAR Cheapest = MINX(ReliableSuburbs, [Median Price])
+VAR Ratio    = DIVIDE(Dearest, Cheapest)
+RETURN
+IF(
+    ISBLANK(Ratio),
+    "",
+    "Across suburbs in view, the dearest median is " &
+    FORMAT(Ratio, "0.0") & "× the cheapest."
+)

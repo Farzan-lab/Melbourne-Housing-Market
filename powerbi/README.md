@@ -496,30 +496,162 @@ looks unusually low — by naming the reason before the reader has to ask.
 
 > 💭 **The question this page answers:** where can I afford to buy?
 
-### Slicers
-Same four as Page 1, plus a `Price Band` slicer.
+**Status:** ✅ Built. This section records what is on the page as built.
 
-### Visuals
+The header band, title, and page navigator are copied from Page 1 at identical
+coordinates. The four synced slicers appear here automatically; a fifth,
+`Price Band`, is added for this page at `X = 20, Y = 440, W = 150, H = 60`.
 
-| # | Visual | Fields | Notes |
-|:-:|--------|--------|-------|
-| 1 | **Map** (large) | Lat: `latitude` · Long: `longitude` · Size: `Total Sales` · Saturation: `Median Price (Reliable)` | Melbourne-wide view |
-| 2 | **Bar chart — top 10** | Y: `suburb` · X: `Median Price (Reliable)` · Top-N filter: 10 | `Most expensive suburbs` |
-| 3 | **Bar chart — bottom 10** | Same, Bottom-N 10 | `Most affordable suburbs` |
-| 4 | **Table** | `suburb`, `Median Price`, `Total Sales`, `Suburb Price Rank`, `Price vs Market %`, `Sample Size Warning` | Conditional-format `Price vs Market %` red → green |
+### Layout map
 
-> **Why `Median Price (Reliable)` and not `Median Price` on the ranked charts:**
-> it blanks out suburbs with fewer than 30 sales. Without that guard, a suburb
-> with three recorded sales can top the "most expensive" chart on the strength of
-> one mansion. Excluding thin samples from rankings — and flagging them in the
-> table via `Sample Size Warning` — is what separates a report that looks
-> confident from one that *is* trustworthy.
+```
+┌──────────────────────────────────────────────────────────────┐
+│  HEADER BAND (copied from Page 1)                            │
+├────────┬───────────────────────────┬─────────────────────────┤
+│ FILTER │  Map — sales across       │  Bar — most expensive   │
+│ PANEL  │  Melbourne                │  suburbs (Top 10) 432×170│
+│ (+Price│  640×340                  ├─────────────────────────┤
+│  Band) │                           │  Bar — most affordable  │
+│        │                           │  suburbs (Bottom 10)     │
+│        ├───────────────────────────┴─────────────────────────┤
+│        │  Card — "Where's the value?" insight   1080×88      │
+│        ├───────────────────────────────────────────────────  │
+│        │  Table — all suburbs ranked            1080×166     │
+├────────┴───────────────────────────────────────────────────  ┤
+│  PAGE NAVIGATOR                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+<details open>
+<summary><strong>Visual 1 — Map (bubble)</strong></summary>
+
+<br>
+
+Position `X = 190, Y = 88, W = 640, H = 340`.
+
+| Field well | Bound to |
+|---|---|
+| Latitude | `latitude` |
+| Longitude | `longitude` |
+| Bubble size | `Total Sales` |
+
+**Bubble map chosen over Filled Map or Shape Map.** The data carries exact
+`latitude`/`longitude` for every property, which is precisely what a bubble map
+uses. A Filled Map needs recognisable named regions and cannot use coordinates —
+and Bing does not reliably know every Melbourne suburb boundary. Shape Map would
+give cleaner boundaries but requires importing a custom TopoJSON file and is still
+a preview feature. The bubble map uses the strongest signal in the data with no
+extra setup.
+
+**Setup notes.** `latitude` and `longitude` were assigned **Data category →
+Latitude / Longitude** (Column tools) so the map plots them correctly, and
+**Map and filled map visuals** was enabled under Options → Security.
+
+**Title:** *"Where sales happen across Melbourne"*.
+
+</details>
+
+<details open>
+<summary><strong>Visuals 2 & 3 — Most expensive / most affordable suburbs</strong></summary>
+
+<br>
+
+Two clustered bar charts, right column.
+
+| Visual | Position | Top/Bottom N | Sort |
+|---|---|---|---|
+| Most expensive | `X=838, Y=88, W=432, H=170` | Top 10 | Descending |
+| Most affordable | `X=838, Y=266, W=432, H=162` | Bottom 10 | Ascending |
+
+Both use **Y-axis: `suburb`**, **X-axis: `Median Price (Reliable)`**. The Top/Bottom
+N filter is applied on the visual, ranked *by that same measure*.
+
+**Why `Median Price (Reliable)` and not `Median Price`.** The reliable measure
+blanks out any suburb with fewer than 30 sales. Without that guard, a suburb with
+three recorded sales can top the "most expensive" chart on the strength of a
+single mansion. Ranking on the guarded measure keeps thin samples out of the
+charts entirely.
+
+**Verification:** the top bar should be **Canterbury ≈ $2.30M**; the bottom bar
+**Melton South ≈ $408K**.
+
+</details>
+
+<details open>
+<summary><strong>Visual 4 — "Where's the value?" (card)</strong></summary>
+
+<br>
+
+Position `X = 190, Y = 438, W = 1080, H = 88` (full width, above the table).
+Bound to the `Insight — Best Value Suburb` measure (Section 9 of `measures.dax`).
+
+**Formatting applied**
+- Callout value 14pt, **word wrap on**.
+- Category label off; title *"Where's the value?"*.
+
+**What it does.** It names the most affordable **reliable** suburb (30+ sales) in
+the current filter context and states how far below the market median it sits —
+for example *"Most affordable reliable suburb: Melton South at $408,500 — 53%
+below the market median."* Because it respects filters, selecting a region shows
+the best-value suburb *within that region*, answering the page's question in one
+sentence.
+
+**Why it excludes thin samples.** The same logic as the ranked charts: it would be
+irresponsible to recommend a "best value" suburb whose low price rests on two or
+three sales. Only suburbs with enough data to trust are considered.
+
+</details>
+
+<details open>
+<summary><strong>Visual 5 — All suburbs ranked (table)</strong></summary>
+
+<br>
+
+Position `X = 190, Y = 534, W = 1080, H = 166`.
+
+| Column | Source |
+|---|---|
+| `suburb` | field |
+| `Suburb Price Rank` | measure |
+| `Median Price` | measure |
+| `Total Sales` | measure |
+| `Price vs Market %` | measure |
+| `Sample Size Warning` | measure |
+
+**Formatting applied**
+- **Conditional formatting** on `Price vs Market %`: diverging gradient, green at
+  the minimum (below market), neutral at centre `0`, red at the maximum (above
+  market). A reader sees at a glance which suburbs are cheaper than the city.
+- `Price vs Market %` formatted as a percentage, 1 decimal.
+- Sorted by `Suburb Price Rank` ascending (rank 1 = most expensive at the top).
+
+**On `Sample Size Warning`.** For any suburb with fewer than 30 sales this column
+reads *"⚠ Only N sales — treat with caution"*. Small samples are not hidden from
+the table — they are shown *with* their warning, so the reader keeps the detail
+but is told where the numbers are thin.
+
+</details>
+
+<details>
+<summary><strong>Interactions and behaviours</strong></summary>
+
+<br>
+
+- Cross-filtering is left at the default: clicking a suburb bar or a map bubble
+  filters the table and the other charts.
+- The five synced slicers carry filter context to and from Pages 1 and 3.
+- The insight card and the ranked charts all respect the active filters, so the
+  written recommendation always matches what the charts show.
+
+</details>
 
 ---
 
 ## 📄 Page 3 — Price Drivers
 
 > 💭 **The question this page answers:** what actually drives the price?
+
+**Status:** ⬜ Planned. The specification below is the build plan, not yet an as-built record.
 
 ### Visuals
 
